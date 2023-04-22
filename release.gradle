@@ -1,0 +1,46 @@
+task outputFiles {
+    doFirst {
+        System.out.println("Build Version: " + android.defaultConfig.versionName)
+    }
+    doLast {
+        def version = "v${android.defaultConfig.versionName}"
+        project.ext.apksDestinationDir = APK_DESTINATION_DIR + "/" + version
+        mkdir project.ext.apksDestinationDir
+        copy {
+            from "build/outputs/apk", "build/outputs/bundle"
+            into project.ext.apksDestinationDir
+        }
+        delete("build/outputs")
+    }
+}
+
+task deleteBuild() {
+    delete("build/")
+}
+
+task buildUat(dependsOn: 'assembleUatRelease')
+task buildProd(dependsOn: 'assembleProdRelease')
+task buildBundleProd(dependsOn: 'bundleProdRelease')
+
+task generateApks {
+    if (project.name == 'app') {
+        dependsOn outputFiles
+        outputFiles.dependsOn buildProd
+        buildProd.dependsOn buildUat
+        buildUat.dependsOn buildBundleProd
+        buildBundleProd.dependsOn deleteBuild
+        doLast {
+            println "All done. Please find the APKs at ${project.ext.apksDestinationDir}"
+        }
+    }
+}
+
+task runAppUnitTest {
+    if (project.name == 'app') {
+        dependsOn clean
+    }
+}
+
+generateApks.group = project.ext.releaseGroup
+
+
